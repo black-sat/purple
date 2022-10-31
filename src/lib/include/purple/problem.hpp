@@ -25,6 +25,7 @@
 #define PURPLE_PROBLEM_HPP
 
 #include <black/logic/logic.hpp>
+#include <black/support/tribool.hpp>
 
 #include <vector>
 #include <unordered_map>
@@ -34,39 +35,64 @@ namespace purple {
   namespace logic = black::logic::fragments::FO;
 
   using black::identifier;
-
-  // parameter of a schematic action
-  struct parameter {
-    logic::variable var;
-    logic::sort type;
-  };
+  using black::var_decl;
+  using black::tribool;
 
   struct effect {
-    bool positive = true;
     std::vector<logic::proposition> fluents;
     std::vector<logic::atom> predicates;
+    bool positive = true;
+
+    effect(
+      std::vector<logic::proposition> f,
+      std::vector<logic::atom> p,
+      bool pos = true
+    ) : fluents{f}, predicates{p}, positive{pos} { }
+
+    effect(
+      std::vector<logic::proposition> f,
+      bool pos = true
+    ) : fluents{f}, positive{pos} { }
+
+    effect(
+      std::vector<logic::atom> p,
+      bool pos = true
+    ) : predicates{p}, positive{pos} { }
+
+    effect(
+      logic::proposition f,
+      bool pos = true
+    ) : fluents{{f}}, positive{pos} { }
+
+    effect(
+      logic::atom p,
+      bool pos = true
+    ) : predicates{{p}}, positive{pos} { }
   };
 
   // schematic or ground instantaneous action
   struct action {
     identifier name;
-    std::vector<parameter> params;
+    std::vector<var_decl> params;
 
     logic::formula precondition;
     std::vector<effect> effects;
-
-    bool is_ground() const { return params.empty(); }
   };
 
   // schematic fluent (a.k.a. predicate)
   struct predicate {
     logic::relation name;
-    std::vector<parameter> params;
+    std::vector<var_decl> params;
+
+    template<typename ...Args>
+    auto operator()(Args ...args) const {
+      return name(args...);
+    }
   };
 
   // planning domain
   struct domain {
-    std::vector<logic::custom_sort> types;
+    std::vector<logic::named_sort> types;
     std::vector<logic::proposition> fluents;
     std::vector<predicate> predicates;
     std::vector<action> actions;
@@ -74,9 +100,9 @@ namespace purple {
 
   // planning problem
   struct problem {
-    std::unordered_map<logic::custom_sort, std::vector<logic::variable>> types;
+    std::vector<black::sort_decl> types;
 
-    logic::formula init;
+    std::vector<effect> init;
     logic::formula goal;
   };
 

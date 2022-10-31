@@ -23,7 +23,7 @@
 
 set (
   LIB_SRC
-  src/purple.cpp 
+  src/solver.cpp 
 )
 
 add_library (purple ${LIB_SRC})

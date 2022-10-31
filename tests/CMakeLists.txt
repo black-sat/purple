@@ -21,49 +21,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-cmake_minimum_required(VERSION 3.10)
-
-project(
-  purple 
-  VERSION 0.0.1
-  LANGUAGES C CXX
-  DESCRIPTION "PURPLE (Expressive Automated Planner based on BLACK)"
+set (
+  SRC
+  scratch.cpp
 )
 
-set(BUILD_SHARED_LIBS ON)
+add_executable (test ${SRC})
 
-set(CMAKE_MODULE_PATH
-    "${CMAKE_SOURCE_DIR}/cmake"
-    ${CMAKE_MODULE_PATH})
+target_link_libraries(test PUBLIC black::black purple)
 
-include(EnableWarnings) # Common warnings to enable or disable
-include(GNUInstallDirs) # Correct and portable installation paths
-include(CheckIPOSupported) # Check if we can do LTO
-
-# dependencies
-find_package(black 0.9.2 REQUIRED)
-
-#
-# Fix the RPATH for the installation 
-#
-if(APPLE)
-  set(CMAKE_MACOSX_RPATH 1)
-  list(
-    APPEND CMAKE_INSTALL_RPATH 
-    ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}
-  )
-endif()
-
-
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DBLACK_ASSERT_DISABLE")
-check_ipo_supported(RESULT IPO_SUPPORTED LANGUAGES C CXX)
-
-if(IPO_SUPPORTED)
-  message(STATUS "Link-Time Optimization enabled")
-  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE YES)
-endif()
-
-# Black library and frontend
-add_subdirectory(src/lib)
-add_subdirectory(tests)
-
+target_enable_warnings(test)

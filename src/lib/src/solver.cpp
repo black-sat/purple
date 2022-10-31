@@ -21,8 +21,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include <purple/problem.hpp>
+#include <purple/solver.hpp>
 
 namespace purple {
+
+  tribool solver::solve(domain, problem) {
+    return tribool::undef;
+  }
 
 }
