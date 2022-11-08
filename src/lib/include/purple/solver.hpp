@@ -28,8 +28,8 @@
 
 namespace purple {
   class solver {
-    public:
-    tribool solve(domain d, problem p);
+  public:
+    tribool solve(domain const& d, problem const& p) const;
   };
 }
 

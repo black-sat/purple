@@ -33,47 +33,61 @@
 namespace purple {
 
   namespace logic = black::logic::fragments::FO;
+  namespace temporal = black::logic::fragments::LTLPFO;
 
   using black::identifier;
-  using black::var_decl;
   using black::tribool;
 
   struct effect {
+    logic::alphabet &sigma;
+    std::optional<logic::formula> precondition;
     std::vector<logic::proposition> fluents;
     std::vector<logic::atom> predicates;
     bool positive = true;
 
     effect(
+      logic::formula pre,
       std::vector<logic::proposition> f,
       std::vector<logic::atom> p,
       bool pos = true
-    ) : fluents{f}, predicates{p}, positive{pos} { }
-
+    ) : sigma{*pre.sigma()},
+        precondition{pre}, fluents{f}, predicates{p}, positive{pos} { }
+    
     effect(
+      logic::alphabet &s,
       std::vector<logic::proposition> f,
-      bool pos = true
-    ) : fluents{f}, positive{pos} { }
-
-    effect(
       std::vector<logic::atom> p,
       bool pos = true
-    ) : predicates{p}, positive{pos} { }
+    ) : sigma{s}, fluents{f}, predicates{p}, positive{pos} { }
+
+    effect(
+      logic::formula pre,
+      logic::proposition f,
+      bool pos = true
+    ) : sigma{*pre.sigma()}, precondition{pre}, fluents{{f}}, positive{pos} { }
+
+    effect(
+      logic::formula pre,
+      logic::atom p,
+      bool pos = true
+    ) : sigma{*pre.sigma()}, 
+        precondition{pre}, predicates{{p}}, positive{pos} { }
 
     effect(
       logic::proposition f,
       bool pos = true
-    ) : fluents{{f}}, positive{pos} { }
+    ) : sigma{*f.sigma()}, fluents{{f}}, positive{pos} { }
 
     effect(
       logic::atom p,
       bool pos = true
-    ) : predicates{{p}}, positive{pos} { }
+    ) : sigma{*p.sigma()}, predicates{{p}}, positive{pos} { }
   };
 
   // schematic or ground instantaneous action
   struct action {
     identifier name;
-    std::vector<var_decl> params;
+    std::vector<black::var_decl> params;
 
     logic::formula precondition;
     std::vector<effect> effects;
@@ -82,16 +96,25 @@ namespace purple {
   // schematic fluent (a.k.a. predicate)
   struct predicate {
     logic::relation name;
-    std::vector<var_decl> params;
+    std::vector<black::var_decl> params;
 
     template<typename ...Args>
     auto operator()(Args ...args) const {
       return name(args...);
     }
+
+    auto operator()(std::vector<logic::var_decl> const& decls) const {
+      std::vector<logic::variable> vars;
+      for(auto d : decls) 
+        vars.push_back(d.variable());
+      
+      return name(vars);
+    }
   };
 
   // planning domain
   struct domain {
+    black::alphabet &sigma;
     std::vector<logic::named_sort> types;
     std::vector<logic::proposition> fluents;
     std::vector<predicate> predicates;
@@ -100,8 +123,8 @@ namespace purple {
 
   // planning problem
   struct problem {
+    black::alphabet &sigma;
     std::vector<black::sort_decl> types;
-
     std::vector<effect> init;
     logic::formula goal;
   };
