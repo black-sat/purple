@@ -40,7 +40,7 @@ namespace purple {
 
   struct effect {
     logic::alphabet &sigma;
-    std::optional<logic::formula> precondition;
+    logic::formula precondition;
     std::vector<logic::proposition> fluents;
     std::vector<logic::atom> predicates;
     bool positive = true;
@@ -58,7 +58,8 @@ namespace purple {
       std::vector<logic::proposition> f,
       std::vector<logic::atom> p,
       bool pos = true
-    ) : sigma{s}, fluents{f}, predicates{p}, positive{pos} { }
+    ) : sigma{s}, precondition{sigma.top()}, 
+        fluents{f}, predicates{p}, positive{pos} { }
 
     effect(
       logic::formula pre,
@@ -76,12 +77,14 @@ namespace purple {
     effect(
       logic::proposition f,
       bool pos = true
-    ) : sigma{*f.sigma()}, fluents{{f}}, positive{pos} { }
+    ) : sigma{*f.sigma()}, precondition{sigma.top()},
+        fluents{{f}}, positive{pos} { }
 
     effect(
       logic::atom p,
       bool pos = true
-    ) : sigma{*p.sigma()}, predicates{{p}}, positive{pos} { }
+    ) : sigma{*p.sigma()}, precondition{sigma.top()}, 
+        predicates{{p}}, positive{pos} { }
   };
 
   // schematic or ground instantaneous action

@@ -104,19 +104,6 @@ namespace purple {
     );
   }
 
-  static logic::formula replace(
-    logic::formula f, 
-    std::vector<logic::term> const &patterns,
-    std::vector<logic::var_decl> const &replacements
-  ) {
-    std::vector<logic::term> rvars;
-
-    for(auto d : replacements)
-      rvars.push_back(d.variable());
-
-    return logic::replace(f, patterns, rvars);
-  }
-
   static temporal::formula frame(domain d, predicate p, bool change) {
     logic::alphabet &sigma = d.sigma;
 
@@ -129,37 +116,25 @@ namespace purple {
 
     auto body = big_or(sigma, d.actions, [&](action const& a) -> logic::formula 
     {
+      std::vector<logic::formula> mappings;
       std::vector<logic::formula> pre;
-      
-      logic::formula act = apply(a);
 
       for(effect const& e : a.effects) {
         if(e.positive == change) {
           for(logic::atom t : e.predicates) {
             if(t.rel() == p.name) {
-              pre.push_back(replace(
-                e.precondition ? *e.precondition : sigma.top(), 
-                t.terms(), p.params
-              ));
-              
-              act = replace(act, t.terms(), p.params);
+              pre.push_back(e.precondition);
+              for(size_t i = 0; i < t.terms().size(); ++i) {
+                mappings.push_back(t.terms()[i] == p.params[i].variable());
+              }
             }
           }
         }
       }
       
-      logic::formula preformula = big_or(sigma, pre, [&](auto f) { return f; });
-
-      std::vector<logic::var_decl> closure;
-      for(auto param : a.params) {
-        if(std::find(p.params.begin(), p.params.end(), param) == p.params.end())
-          closure.push_back(param);
-      }
-
-      if(closure.empty())
-        return act && preformula;
-
-      return logic::exists_block(closure, act && preformula);
+      return logic::exists_block(a.params, 
+        apply(a) && big_and(sigma, mappings) && big_or(sigma, pre)
+      );
     });
 
     return temporal::forall_block(p.params, implies(head, body));
@@ -182,9 +157,8 @@ namespace purple {
     temporal::formula effects = 
       temporal::big_and(sigma, d.actions, [&](action const& a) {
         return temporal::big_and(sigma, a.effects, [&](effect const& e) {
-          logic::formula pre = e.precondition ? *e.precondition : sigma.top();
           return temporal::forall_block(
-            a.params, implies(apply(a) && pre, X(encode(e)))
+            a.params, implies(apply(a) && e.precondition, X(encode(e)))
           );
         });
       });
@@ -208,7 +182,7 @@ namespace purple {
 
     temporal::formula encoding = encode(d, p);
     
-    //std::cerr << to_string(encoding) << "\n";
+    std::cerr << to_string(encoding) << "\n";
 
     return slv.solve(*xi, encoding, /* finite = */ true);
   }
