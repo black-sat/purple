@@ -61,13 +61,18 @@ namespace purple {
     return xi;
   }
 
-  static logic::atom apply(action const& a) {
+  static logic::atom apply(action const& a, std::vector<logic::var_decl> decls) 
+  {
     auto rel = a.precondition.sigma()->relation(a.name);
     std::vector<logic::variable> vars;
-    for(auto d : a.params) 
+    for(auto d : decls) 
       vars.push_back(d.variable());
     
     return rel(vars);
+  }
+
+  static logic::atom apply(action const& a) {
+    return apply(a, a.params);
   }
 
   static logic::formula encode(effect const& e) {
@@ -162,12 +167,42 @@ namespace purple {
   }
 
   static logic::formula parallelism(domain const& d) {
-    return big_and(d.sigma, d.actions, [&](action const& a) {
-      return implies(
-        logic::exists_block(a.params, apply(a)), 
-        logic::forall_block(a.params, !apply(a))
+    std::vector<logic::formula> axioms;
+    for(action const& a1 : d.actions) {
+      for(action const& a2 : d.actions) {
+        if(a1.name == a2.name)
+          continue;
+        axioms.push_back(
+          logic::exists_block(a1.params, !apply(a1)) || 
+          logic::exists_block(a2.params, !apply(a2))
+        );
+      }
+    }
+
+    for(action const& a : d.actions) { 
+      std::vector<logic::var_decl> primes;
+      for(logic::var_decl decl : a.params) {
+        logic::variable prime = 
+          d.sigma.variable(std::tuple{decl.variable(), 1});
+        primes.push_back(d.sigma.var_decl(prime, decl.sort()));
+      }
+
+      std::vector<logic::formula> guards;
+      for(size_t i = 0; i < a.params.size(); ++i)
+        guards.push_back(a.params[i].variable() != primes[i].variable());
+      
+      logic::formula guard = big_or(d.sigma, guards);
+
+      axioms.push_back(
+        logic::forall_block(a.params, 
+          implies(apply(a), logic::forall_block(primes, 
+            implies(guard, !apply(a, primes))
+          ))
+        )
       );
-    });
+    }
+
+    return logic::big_and(d.sigma, axioms);
   }
 
   static temporal::formula 
