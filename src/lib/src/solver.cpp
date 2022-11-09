@@ -71,12 +71,9 @@ namespace purple {
   }
 
   static logic::formula encode(effect const& e) {
-    logic::formula fluents = 
-      logic::big_and(e.sigma, e.fluents, [](auto x) { return x; });
-    logic::formula preds = 
-      logic::big_and(e.sigma, e.predicates, [](auto x) { return x; });
-
-    return fluents && preds;
+    return 
+      logic::big_and(e.sigma, e.fluents) && 
+      logic::big_and(e.sigma, e.predicates);
   }
 
   static bool mentions(logic::formula f, logic::relation r, bool positive) {
@@ -104,6 +101,31 @@ namespace purple {
     );
   }
 
+  static temporal::formula frame(domain d, logic::proposition p, bool change) {
+    logic::alphabet &sigma = d.sigma;
+
+    temporal::formula head = sigma.top();
+    
+    if(change)
+      head = !p && X(p);
+    else
+      head = p && X(!p);
+
+    auto body = big_or(sigma, d.actions, [&](action const& a) {
+      std::vector<logic::formula> pre;
+
+      for(effect const& e : a.effects)
+        if(e.positive == change)
+          for(logic::proposition q : e.fluents)
+            if(p == q)
+              pre.push_back(e.precondition);
+      
+      return logic::exists_block(a.params, apply(a) && big_or(sigma, pre));
+    });
+
+    return implies(head, body);
+  }
+
   static temporal::formula frame(domain d, predicate p, bool change) {
     logic::alphabet &sigma = d.sigma;
 
@@ -114,8 +136,7 @@ namespace purple {
     else
       head = p(p.params) && X(!p(p.params));
 
-    auto body = big_or(sigma, d.actions, [&](action const& a) -> logic::formula 
-    {
+    auto body = big_or(sigma, d.actions, [&](action const& a) {
       std::vector<logic::formula> mappings;
       std::vector<logic::formula> pre;
 
@@ -138,6 +159,15 @@ namespace purple {
     });
 
     return temporal::forall_block(p.params, implies(head, body));
+  }
+
+  static logic::formula parallelism(domain const& d) {
+    return big_and(d.sigma, d.actions, [&](action const& a) {
+      return implies(
+        logic::exists_block(a.params, apply(a)), 
+        logic::forall_block(a.params, !apply(a))
+      );
+    });
   }
 
   static temporal::formula 
@@ -166,9 +196,15 @@ namespace purple {
     temporal::formula frames = 
       big_and(sigma, d.predicates, [&](predicate const& pred) {
         return frame(d, pred, true) && frame(d, pred, false);
+      }) &&
+      big_and(sigma, d.fluents, [&](logic::proposition prop) {
+        return frame(d, prop, true) && frame(d, prop, false);
       });
 
-    temporal::formula transition = preconditions && effects && frames;
+    logic::formula semantics = parallelism(d);
+
+    temporal::formula transition = 
+      preconditions && effects && frames && semantics;
 
     return init && G(transition) && F(p.goal);
   }
