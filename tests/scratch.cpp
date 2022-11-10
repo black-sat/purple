@@ -24,6 +24,8 @@
 #include <purple/problem.hpp>
 #include <purple/solver.hpp>
 
+#include <black/logic/prettyprint.hpp>
+
 #include <iostream>
 
 int main() {
@@ -78,7 +80,7 @@ int main() {
         position(bedroom),
         connected(kitchen, coridor),
         connected(toilet, coridor),
-        //connected(bedroom, coridor)
+        connected(bedroom, coridor)
       }
     },
     position(kitchen)
@@ -93,8 +95,18 @@ int main() {
   if(result == purple::tribool::undef)
     std::cout << "Unknown result\n";
 
-  if(result == true)
+  if(result == true) {
     std::cout << "Plan found\n";
+    purple::plan p = *slv.solution();
+    
+    for(size_t t = 0; t < p.steps.size(); ++t) {
+      purple::plan::step step = p.steps[t];
+      
+      black::relation action = sigma.relation(step.action.name);
+
+      std::cout << " t = " << t << ": " << to_string(action(step.args)) << "\n";
+    }
+  }
 
   if(result == false)
     std::cout << "Plan not found\n";

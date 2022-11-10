@@ -26,10 +26,21 @@
 
 #include <purple/problem.hpp>
 
+#include <black/solver/solver.hpp>
+
 namespace purple {
   class solver {
   public:
-    tribool solve(domain const& d, problem const& p) const;
+    tribool solve(domain const& d, problem const& p);
+
+    std::optional<plan> solution() const;
+  private:
+    domain const*_d = nullptr;
+    problem const*_p = nullptr;
+
+    black::solver _slv;
+
+    std::optional<plan::step> get_step(size_t t) const;
   };
 }
 

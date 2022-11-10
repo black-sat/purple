@@ -137,6 +137,15 @@ namespace purple {
     logic::formula goal;
   };
 
+  struct plan {
+    struct step {
+      struct action action;
+      std::vector<logic::variable> args;
+    };
+
+    std::vector<step> steps;
+  };
+
 }
 
 #endif // PURPLE_PROBLEM_HPP

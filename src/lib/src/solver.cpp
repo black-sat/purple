@@ -26,9 +26,12 @@
 #include <black/solver/solver.hpp>
 #include <black/logic/prettyprint.hpp>
 
+#include <string_view>
 #include <iostream>
 
 namespace purple {
+
+  using namespace std::literals;
 
   static
   std::optional<logic::scope> scope(domain const& d, problem const& p) {
@@ -216,6 +219,7 @@ namespace purple {
 
   static logic::formula parallelism(domain const& d) {
     std::vector<logic::formula> axioms;
+
     for(action const& a1 : d.actions) {
       for(action const& a2 : d.actions) {
         if(a1.name == a2.name)
@@ -231,7 +235,7 @@ namespace purple {
       std::vector<logic::var_decl> primes;
       for(logic::var_decl decl : a.params) {
         logic::variable prime = 
-          d.sigma.variable(std::tuple{decl.variable(), 1});
+          d.sigma.variable(std::tuple{"_prime_"sv, decl.variable()});
         primes.push_back(d.sigma.var_decl(prime, decl.sort()));
       }
 
@@ -290,8 +294,28 @@ namespace purple {
     return init && G(transition) && F(p.goal);
   }
 
-  tribool solver::solve(domain const& d, problem const& p) const {
-    black::solver slv;
+  [[maybe_unused]]
+  static void tracer(black::solver::trace_t trace) {
+    static size_t k = 0;
+    if(trace.type == black::solver::trace_t::stage) {
+      k = std::get<size_t>(trace.data);
+    }
+
+    if(trace.type == black::solver::trace_t::unrav) {
+      std::cerr << k << "-unrav: " << 
+        to_string(std::get<logic::formula>(trace.data)) << "\n";
+    }
+
+    if(trace.type == black::solver::trace_t::empty) {
+      std::cerr << k << "-empty: " << 
+        to_string(std::get<logic::formula>(trace.data)) << "\n";
+    }
+  }
+
+  tribool solver::solve(domain const& d, problem const& p) {
+    _slv = black::solver{};
+    _d = &d;
+    _p = &p;
 
     std::optional<logic::scope> xi = scope(d, p);
     if(!xi)
@@ -299,9 +323,75 @@ namespace purple {
 
     temporal::formula encoding = encode(d, p);
     
-    std::cerr << to_string(encoding) << "\n";
+    //std::cerr << to_string(encoding) << "\n";
 
-    return slv.solve(*xi, encoding, /* finite = */ true, 1);
+    //_slv.set_tracer(tracer);
+
+    return _slv.solve(*xi, encoding, /* finite = */ true);
+  }
+
+  static std::optional<logic::domain_ref>
+  domain_of_type(problem const *p, logic::sort s) {
+    for(logic::sort_decl sdecl : p->types)
+      if(s == sdecl.sort())
+        return sdecl.domain();
+    
+    return {};
+  }
+
+  static bool increment(
+    std::vector<size_t> &indexes, std::vector<logic::domain_ref> const& domains
+  ) {
+    for(size_t i = 0; i < indexes.size(); ++i) {
+      indexes[i] = (indexes[i] + 1) % domains[i]->elements().size();
+      if(indexes[i] != 0)
+        break;
+      if(i == indexes.size() - 1)
+        return false;
+    }
+
+    return true;
+  }
+
+
+  std::optional<plan::step> solver::get_step(size_t t) const {
+    for(action const &a : _d->actions) {
+      std::vector<logic::domain_ref> domains;
+      for(logic::var_decl decl : a.params) {
+        auto dom = domain_of_type(_p, decl.sort());
+        black_assert(dom.has_value());
+        domains.push_back(*dom);
+      }
+      std::vector<size_t> indexes(domains.size(), 0);
+      do {
+        std::vector<logic::variable> args;
+        for(size_t i = 0; i < domains.size(); i++) {
+          args.push_back(domains[i]->elements()[indexes[i]]);
+        }
+
+        logic::relation rel = _d->sigma.relation(a.name);
+        if(_slv.model()->value(rel(args), t)) {
+          return plan::step{a, args};
+        }
+      } while(increment(indexes, domains));
+    }
+
+    return {};
+  }
+
+  std::optional<plan> solver::solution() const {
+    if(!_d || !_p)
+      return {};
+
+    plan s;
+
+    for(size_t t = 0; t < _slv.model()->size() - 1; ++t) {
+      auto step = get_step(t);
+      black_assert(step.has_value());
+      s.steps.push_back(*step);
+    }
+    
+    return s;
   }
 
 }
