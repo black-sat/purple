@@ -77,8 +77,16 @@ namespace purple {
 
   static logic::formula encode(effect const& e) {
     return 
-      logic::big_and(e.sigma, e.fluents) && 
-      logic::big_and(e.sigma, e.predicates);
+      logic::big_and(e.sigma, e.fluents, [&](auto p) -> logic::formula {
+        if(e.positive)
+          return p;
+        return !p;
+      }) && 
+      logic::big_and(e.sigma, e.predicates, [&](auto p) -> logic::formula {
+        if(e.positive)
+          return p;
+        return !p;
+      });
   }
 
   static bool mentions(logic::formula f, logic::relation r, bool positive) {
@@ -104,6 +112,46 @@ namespace purple {
       },
       [](otherwise) { return false; }
     );
+  }
+
+  static logic::formula encode(domain const& d, state const& s) {
+    std::vector<logic::proposition> negatives;
+    for(auto prop : s.fluents) {
+      if(std::find(d.fluents.begin(), d.fluents.end(), prop) == d.fluents.end())
+        negatives.push_back(prop);
+    }
+
+    logic::formula props = 
+      big_and(d.sigma, s.fluents) && big_and(d.sigma, negatives, [](auto p) {
+        return !p;
+      });
+    
+    logic::formula preds =
+      big_and(d.sigma, d.predicates, [&](predicate const& pred) {
+        std::vector<logic::formula> guards;
+        for(logic::atom a : s.predicates) {
+          if(a.rel() != pred.name)
+            continue;
+          
+          black_assert(pred.params.size() == a.terms().size());
+
+          std::vector<logic::formula> eqs;
+          for(size_t i = 0; i < pred.params.size(); ++i)
+            eqs.push_back(pred.params[i].variable() == a.terms()[i]);
+          
+          guards.push_back(big_and(d.sigma, eqs));
+        }
+
+        std::vector<logic::variable> vars;
+        for(logic::var_decl decl : pred.params)
+          vars.push_back(decl.variable());
+
+        return logic::forall_block(pred.params, 
+          logic::iff(pred.name(vars), big_or(d.sigma, guards))
+        );
+      });
+
+    return props && preds;
   }
 
   static temporal::formula frame(domain d, logic::proposition p, bool change) {
@@ -210,9 +258,7 @@ namespace purple {
   {
     logic::alphabet &sigma = d.sigma;
 
-    logic::formula init = big_and(sigma, p.init, [&](effect const& e) {
-      return encode(e);
-    });
+    logic::formula init = encode(d, p.init);
 
     logic::formula preconditions = 
       logic::big_and(sigma, d.actions, [&](action const& a) {
@@ -255,7 +301,7 @@ namespace purple {
     
     std::cerr << to_string(encoding) << "\n";
 
-    return slv.solve(*xi, encoding, /* finite = */ true);
+    return slv.solve(*xi, encoding, /* finite = */ true, 1);
   }
 
 }

@@ -46,7 +46,7 @@ int main() {
     "go",
     {from[room], to[room]},
     position(from) && (connected(from, to) || connected(to, from)),
-    {{position(to)}}
+    {{position(from), false}, {position(to)}}
   };
 
   purple::domain home_domain = {
@@ -73,10 +73,13 @@ int main() {
     sigma,
     {sigma.sort_decl(room, rooms)},
     {
-      {position(bedroom)},
-      {connected(kitchen, coridor)},
-      {connected(toilet, coridor)},
-      {connected(bedroom, coridor)}
+      {},
+      {
+        position(bedroom),
+        connected(kitchen, coridor),
+        connected(toilet, coridor),
+        //connected(bedroom, coridor)
+      }
     },
     position(kitchen)
   };

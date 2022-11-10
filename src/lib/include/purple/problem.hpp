@@ -87,6 +87,11 @@ namespace purple {
         predicates{{p}}, positive{pos} { }
   };
 
+  struct state {
+    std::vector<logic::proposition> fluents;
+    std::vector<logic::atom> predicates;
+  };
+
   // schematic or ground instantaneous action
   struct action {
     identifier name;
@@ -128,7 +133,7 @@ namespace purple {
   struct problem {
     black::alphabet &sigma;
     std::vector<black::sort_decl> types;
-    std::vector<effect> init;
+    state init;
     logic::formula goal;
   };
 
