@@ -63,12 +63,14 @@ int main() {
   auto toilet = sigma.variable("toilet");
   auto bedroom = sigma.variable("bedroom");
   auto coridor = sigma.variable("coridor");
+  auto balcony = sigma.variable("balcony");
 
   auto rooms = black::make_domain({
     kitchen,
     toilet,
     bedroom,
-    coridor
+    coridor,
+    balcony
   });
 
   purple::problem my_home = {
@@ -77,10 +79,11 @@ int main() {
     {
       {},
       {
-        position(bedroom),
+        position(balcony),
         connected(kitchen, coridor),
         connected(toilet, coridor),
-        connected(bedroom, coridor)
+        connected(bedroom, coridor),
+        connected(bedroom, balcony)
       }
     },
     position(kitchen)

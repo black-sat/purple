@@ -310,6 +310,11 @@ namespace purple {
       std::cerr << k << "-empty: " << 
         to_string(std::get<logic::formula>(trace.data)) << "\n";
     }
+    
+    if(trace.type == black::solver::trace_t::prune) {
+      std::cerr << k << "-prune: " << 
+        to_string(std::get<logic::formula>(trace.data)) << "\n";
+    }
   }
 
   tribool solver::solve(domain const& d, problem const& p) {
@@ -327,7 +332,7 @@ namespace purple {
 
     //_slv.set_tracer(tracer);
 
-    return _slv.solve(*xi, encoding, /* finite = */ true);
+    return _slv.solve(*xi, encoding, /* finite = */ true, 9000, true);
   }
 
   static std::optional<logic::domain_ref>
