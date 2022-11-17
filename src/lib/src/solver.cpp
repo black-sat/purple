@@ -39,27 +39,16 @@ namespace purple {
     logic::scope xi{sigma};
 
     // declare sorts
-    for(logic::sort_decl decl : p.types) {
+    for(logic::sort_decl decl : p.types)
       xi.declare(decl);
-    }
 
     // declare predicates
-    for(predicate pred : d.predicates) {
-      std::vector<logic::sort> sorts;
-      for(logic::var_decl v : pred.params)
-        sorts.push_back(v.sort());
-
-      xi.declare(pred.name, sorts);
-    }
+    for(predicate pred : d.predicates)
+      xi.declare(pred.name, pred.params);
 
     // declare relations corresponding to actions
-    for(action a : d.actions) {
-      std::vector<logic::sort> sorts;
-      for(logic::var_decl v : a.params)
-        sorts.push_back(v.sort());
-      
-      xi.declare(sigma.relation(a.name), sorts);
-    }
+    for(action a : d.actions)
+      xi.declare(sigma.relation(a.name), a.params);
 
     return xi;
   }
@@ -67,11 +56,7 @@ namespace purple {
   static logic::atom apply(action const& a, std::vector<logic::var_decl> decls) 
   {
     auto rel = a.precondition.sigma()->relation(a.name);
-    std::vector<logic::variable> vars;
-    for(auto d : decls) 
-      vars.push_back(d.variable());
-    
-    return rel(vars);
+    return rel(decls);
   }
 
   static logic::atom apply(action const& a) {
@@ -102,7 +87,7 @@ namespace purple {
         return false;
       },
       [&](quantifier q) {
-        return mentions(q.block().matrix(), r, positive);
+        return mentions(q.matrix(), r, positive);
       },
       [&](negation, auto arg) {
         return mentions(arg, r, !positive);
@@ -145,12 +130,8 @@ namespace purple {
           guards.push_back(big_and(d.sigma, eqs));
         }
 
-        std::vector<logic::variable> vars;
-        for(logic::var_decl decl : pred.params)
-          vars.push_back(decl.variable());
-
-        return logic::forall_block(pred.params, 
-          logic::iff(pred.name(vars), big_or(d.sigma, guards))
+        return logic::forall(pred.params, 
+          logic::iff(pred.name(pred.params), big_or(d.sigma, guards))
         );
       });
 
@@ -176,7 +157,7 @@ namespace purple {
             if(p == q)
               pre.push_back(e.precondition);
       
-      return logic::exists_block(a.params, apply(a) && big_or(sigma, pre));
+      return logic::exists(a.params, apply(a) && big_or(sigma, pre));
     });
 
     return implies(head, body);
@@ -209,12 +190,12 @@ namespace purple {
         }
       }
       
-      return logic::exists_block(a.params, 
+      return logic::exists(a.params, 
         apply(a) && big_and(sigma, mappings) && big_or(sigma, pre)
       );
     });
 
-    return temporal::forall_block(p.params, implies(head, body));
+    return temporal::forall(p.params, implies(head, body));
   }
 
   static logic::formula parallelism(domain const& d) {
@@ -225,8 +206,8 @@ namespace purple {
         if(a1.name == a2.name)
           continue;
         axioms.push_back(
-          logic::exists_block(a1.params, !apply(a1)) || 
-          logic::exists_block(a2.params, !apply(a2))
+          logic::exists(a1.params, !apply(a1)) || 
+          logic::exists(a2.params, !apply(a2))
         );
       }
     }
@@ -246,8 +227,8 @@ namespace purple {
       logic::formula guard = big_or(d.sigma, guards);
 
       axioms.push_back(
-        logic::forall_block(a.params, 
-          implies(apply(a), logic::forall_block(primes, 
+        logic::forall(a.params, 
+          implies(apply(a), logic::forall(primes, 
             implies(guard, !apply(a, primes))
           ))
         )
@@ -266,13 +247,13 @@ namespace purple {
 
     logic::formula preconditions = 
       logic::big_and(sigma, d.actions, [&](action const& a) {
-        return logic::forall_block(a.params, implies(apply(a), a.precondition));
+        return logic::forall(a.params, implies(apply(a), a.precondition));
       });
 
     temporal::formula effects = 
       temporal::big_and(sigma, d.actions, [&](action const& a) {
         return temporal::big_and(sigma, a.effects, [&](effect const& e) {
-          return temporal::forall_block(
+          return temporal::forall(
             a.params, implies(apply(a) && e.precondition, X(encode(e)))
           );
         });
@@ -331,6 +312,7 @@ namespace purple {
     //std::cerr << to_string(encoding) << "\n";
 
     //_slv.set_tracer(tracer);
+    //_slv.set_sat_backend("cvc5");
 
     return _slv.solve(*xi, encoding, /* finite = */ true, 9000, true);
   }
