@@ -35,8 +35,8 @@ namespace purple {
 
   static
   std::optional<logic::scope> scope(domain const& d, problem const& p) {
-    logic::alphabet &sigma = d.sigma;
-    logic::scope xi{sigma};
+    logic::alphabet *sigma = d.sigma;
+    logic::scope xi{*sigma};
 
     // declare sorts
     for(logic::sort_decl decl : p.types)
@@ -48,7 +48,7 @@ namespace purple {
 
     // declare relations corresponding to actions
     for(action a : d.actions)
-      xi.declare(sigma.relation(a.name), a.params);
+      xi.declare(sigma->relation(a.name), a.params);
 
     return xi;
   }
@@ -65,12 +65,12 @@ namespace purple {
 
   static logic::formula encode(effect const& e) {
     return 
-      logic::big_and(e.sigma, e.fluents, [&](auto p) -> logic::formula {
+      logic::big_and(*e.sigma, e.fluents, [&](auto p) -> logic::formula {
         if(e.positive)
           return p;
         return !p;
       }) && 
-      logic::big_and(e.sigma, e.predicates, [&](auto p) -> logic::formula {
+      logic::big_and(*e.sigma, e.predicates, [&](auto p) -> logic::formula {
         if(e.positive)
           return p;
         return !p;
@@ -110,12 +110,12 @@ namespace purple {
     }
 
     logic::formula props = 
-      big_and(d.sigma, s.fluents) && big_and(d.sigma, negatives, [](auto p) {
+      big_and(*d.sigma, s.fluents) && big_and(*d.sigma, negatives, [](auto p) {
         return !p;
       });
     
     logic::formula preds =
-      big_and(d.sigma, d.predicates, [&](predicate const& pred) {
+      big_and(*d.sigma, d.predicates, [&](predicate const& pred) {
         std::vector<logic::formula> guards;
         for(logic::atom a : s.predicates) {
           if(a.rel() != pred.name)
@@ -127,11 +127,11 @@ namespace purple {
           for(size_t i = 0; i < pred.params.size(); ++i)
             eqs.push_back(pred.params[i].variable() == a.terms()[i]);
           
-          guards.push_back(big_and(d.sigma, eqs));
+          guards.push_back(big_and(*d.sigma, eqs));
         }
 
         return logic::forall(pred.params, 
-          logic::iff(pred.name(pred.params), big_or(d.sigma, guards))
+          logic::iff(pred.name(pred.params), big_or(*d.sigma, guards))
         );
       });
 
@@ -139,16 +139,16 @@ namespace purple {
   }
 
   static temporal::formula frame(domain d, logic::proposition p, bool change) {
-    logic::alphabet &sigma = d.sigma;
+    logic::alphabet *sigma = d.sigma;
 
-    temporal::formula head = sigma.top();
+    temporal::formula head = sigma->top();
     
     if(change)
       head = !p && X(p);
     else
       head = p && X(!p);
 
-    auto body = big_or(sigma, d.actions, [&](action const& a) {
+    auto body = big_or(*sigma, d.actions, [&](action const& a) {
       std::vector<logic::formula> pre;
 
       for(effect const& e : a.effects)
@@ -157,23 +157,23 @@ namespace purple {
             if(p == q)
               pre.push_back(e.precondition);
       
-      return logic::exists(a.params, apply(a) && big_or(sigma, pre));
+      return logic::exists(a.params, apply(a) && big_or(*sigma, pre));
     });
 
     return implies(head, body);
   }
 
   static temporal::formula frame(domain d, predicate p, bool change) {
-    logic::alphabet &sigma = d.sigma;
+    logic::alphabet *sigma = d.sigma;
 
-    temporal::formula head = sigma.top();
+    temporal::formula head = sigma->top();
     
     if(change)
       head = !p(p.params) && X(p(p.params));
     else
       head = p(p.params) && X(!p(p.params));
 
-    auto body = big_or(sigma, d.actions, [&](action const& a) {
+    auto body = big_or(*sigma, d.actions, [&](action const& a) {
       std::vector<logic::formula> mappings;
       std::vector<logic::formula> pre;
 
@@ -191,7 +191,7 @@ namespace purple {
       }
       
       return logic::exists(a.params, 
-        apply(a) && big_and(sigma, mappings) && big_or(sigma, pre)
+        apply(a) && big_and(*sigma, mappings) && big_or(*sigma, pre)
       );
     });
 
@@ -216,15 +216,15 @@ namespace purple {
       std::vector<logic::var_decl> primes;
       for(logic::var_decl decl : a.params) {
         logic::variable prime = 
-          d.sigma.variable(std::tuple{"_prime_"sv, decl.variable()});
-        primes.push_back(d.sigma.var_decl(prime, decl.sort()));
+          d.sigma->variable(std::tuple{"_prime_"sv, decl.variable()});
+        primes.push_back(d.sigma->var_decl(prime, decl.sort()));
       }
 
       std::vector<logic::formula> guards;
       for(size_t i = 0; i < a.params.size(); ++i)
         guards.push_back(a.params[i].variable() != primes[i].variable());
       
-      logic::formula guard = big_or(d.sigma, guards);
+      logic::formula guard = big_or(*d.sigma, guards);
 
       axioms.push_back(
         logic::forall(a.params, 
@@ -235,24 +235,24 @@ namespace purple {
       );
     }
 
-    return logic::big_and(d.sigma, axioms);
+    return logic::big_and(*d.sigma, axioms);
   }
 
   static temporal::formula 
   encode(domain const& d, problem const& p) 
   {
-    logic::alphabet &sigma = d.sigma;
+    logic::alphabet *sigma = d.sigma;
 
     logic::formula init = encode(d, p.init);
 
     logic::formula preconditions = 
-      logic::big_and(sigma, d.actions, [&](action const& a) {
+      logic::big_and(*sigma, d.actions, [&](action const& a) {
         return logic::forall(a.params, implies(apply(a), a.precondition));
       });
 
     temporal::formula effects = 
-      temporal::big_and(sigma, d.actions, [&](action const& a) {
-        return temporal::big_and(sigma, a.effects, [&](effect const& e) {
+      temporal::big_and(*sigma, d.actions, [&](action const& a) {
+        return temporal::big_and(*sigma, a.effects, [&](effect const& e) {
           return temporal::forall(
             a.params, implies(apply(a) && e.precondition, X(encode(e)))
           );
@@ -260,10 +260,10 @@ namespace purple {
       });
    
     temporal::formula frames = 
-      big_and(sigma, d.predicates, [&](predicate const& pred) {
+      big_and(*sigma, d.predicates, [&](predicate const& pred) {
         return frame(d, pred, true) && frame(d, pred, false);
       }) &&
-      big_and(sigma, d.fluents, [&](logic::proposition prop) {
+      big_and(*sigma, d.fluents, [&](logic::proposition prop) {
         return frame(d, prop, true) && frame(d, prop, false);
       });
 
@@ -314,7 +314,7 @@ namespace purple {
     //_slv.set_tracer(tracer);
     //_slv.set_sat_backend("cvc5");
 
-    return _slv.solve(*xi, encoding, /* finite = */ true, 9000, true);
+    return _slv.solve(*xi, encoding, /* finite = */ true); //, 9000, true);
   }
 
   static std::optional<logic::domain_ref>
@@ -356,7 +356,7 @@ namespace purple {
           args.push_back(domains[i]->elements()[indexes[i]]);
         }
 
-        logic::relation rel = _d->sigma.relation(a.name);
+        logic::relation rel = _d->sigma->relation(a.name);
         if(_slv.model()->value(rel(args), t)) {
           return plan::step{a, args};
         }

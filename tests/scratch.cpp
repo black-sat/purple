@@ -52,7 +52,7 @@ int main() {
   };
 
   purple::domain home_domain = {
-    sigma,
+    &sigma,
     {room},
     {},
     {position, connected},
@@ -74,7 +74,7 @@ int main() {
   });
 
   purple::problem my_home = {
-    sigma,
+    &sigma,
     {sigma.sort_decl(room, rooms)},
     {
       {},

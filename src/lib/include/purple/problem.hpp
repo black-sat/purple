@@ -39,7 +39,7 @@ namespace purple {
   using black::tribool;
 
   struct effect {
-    logic::alphabet &sigma;
+    logic::alphabet *sigma;
     logic::formula precondition;
     std::vector<logic::proposition> fluents;
     std::vector<logic::atom> predicates;
@@ -50,7 +50,7 @@ namespace purple {
       std::vector<logic::proposition> f,
       std::vector<logic::atom> p,
       bool pos = true
-    ) : sigma{*pre.sigma()},
+    ) : sigma{pre.sigma()},
         precondition{pre}, fluents{f}, predicates{p}, positive{pos} { }
     
     effect(
@@ -58,32 +58,32 @@ namespace purple {
       std::vector<logic::proposition> f,
       std::vector<logic::atom> p,
       bool pos = true
-    ) : sigma{s}, precondition{sigma.top()}, 
+    ) : sigma{&s}, precondition{sigma->top()}, 
         fluents{f}, predicates{p}, positive{pos} { }
 
     effect(
       logic::formula pre,
       logic::proposition f,
       bool pos = true
-    ) : sigma{*pre.sigma()}, precondition{pre}, fluents{{f}}, positive{pos} { }
+    ) : sigma{pre.sigma()}, precondition{pre}, fluents{{f}}, positive{pos} { }
 
     effect(
       logic::formula pre,
       logic::atom p,
       bool pos = true
-    ) : sigma{*pre.sigma()}, 
+    ) : sigma{pre.sigma()}, 
         precondition{pre}, predicates{{p}}, positive{pos} { }
 
     effect(
       logic::proposition f,
       bool pos = true
-    ) : sigma{*f.sigma()}, precondition{sigma.top()},
+    ) : sigma{f.sigma()}, precondition{sigma->top()},
         fluents{{f}}, positive{pos} { }
 
     effect(
       logic::atom p,
       bool pos = true
-    ) : sigma{*p.sigma()}, precondition{sigma.top()}, 
+    ) : sigma{p.sigma()}, precondition{sigma->top()}, 
         predicates{{p}}, positive{pos} { }
   };
 
@@ -122,7 +122,7 @@ namespace purple {
 
   // planning domain
   struct domain {
-    black::alphabet &sigma;
+    black::alphabet *sigma;
     std::vector<logic::named_sort> types;
     std::vector<logic::proposition> fluents;
     std::vector<predicate> predicates;
@@ -131,7 +131,7 @@ namespace purple {
 
   // planning problem
   struct problem {
-    black::alphabet &sigma;
+    black::alphabet *sigma;
     std::vector<black::sort_decl> types;
     state init;
     logic::formula goal;
