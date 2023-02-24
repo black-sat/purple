@@ -55,6 +55,7 @@ namespace purple {
 
   static logic::atom apply(action const& a, std::vector<logic::var_decl> decls) 
   {
+    black_assert(!decls.empty());
     auto rel = a.precondition.sigma()->relation(a.name);
     return rel(decls);
   }
