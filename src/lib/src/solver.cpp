@@ -53,14 +53,39 @@ namespace purple {
     return xi;
   }
 
-  static logic::atom apply(action const& a, std::vector<logic::var_decl> decls) 
+  static logic::formula 
+  _exists(std::vector<logic::var_decl> params, logic::formula matrix) {
+    if(params.empty())
+      return matrix;
+    return black::logic::exists(params, matrix);
+  }
+
+  static logic::formula
+  logic_forall(std::vector<logic::var_decl> params, logic::formula matrix) {
+    if(params.empty())
+      return matrix;
+    return black::logic::forall(params, matrix);
+  }
+
+  static temporal::formula
+  temporal_forall(
+    std::vector<logic::var_decl> params, temporal::formula matrix
+  ) {
+    if(params.empty())
+      return matrix;
+    return black::logic::forall(params, matrix);
+  }
+
+  static 
+  logic::formula apply(action const& a, std::vector<logic::var_decl> decls) 
   {
-    black_assert(!decls.empty());
+    if(decls.empty())
+      return a.precondition.sigma()->proposition(a.name);
     auto rel = a.precondition.sigma()->relation(a.name);
     return rel(decls);
   }
 
-  static logic::atom apply(action const& a) {
+  static logic::formula apply(action const& a) {
     return apply(a, a.params);
   }
 
@@ -105,8 +130,8 @@ namespace purple {
 
   static logic::formula encode(domain const& d, state const& s) {
     std::vector<logic::proposition> negatives;
-    for(auto prop : s.fluents) {
-      if(std::find(d.fluents.begin(), d.fluents.end(), prop) == d.fluents.end())
+    for(auto prop : d.fluents) {
+      if(std::find(s.fluents.begin(), s.fluents.end(), prop) == s.fluents.end())
         negatives.push_back(prop);
     }
 
@@ -131,7 +156,7 @@ namespace purple {
           guards.push_back(big_and(*d.sigma, eqs));
         }
 
-        return logic::forall(pred.params, 
+        return logic_forall(pred.params, 
           logic::iff(pred.name(pred.params), big_or(*d.sigma, guards))
         );
       });
@@ -158,7 +183,7 @@ namespace purple {
             if(p == q)
               pre.push_back(e.precondition);
       
-      return logic::exists(a.params, apply(a) && big_or(*sigma, pre));
+      return _exists(a.params, apply(a) && big_or(*sigma, pre));
     });
 
     return implies(head, body);
@@ -191,12 +216,12 @@ namespace purple {
         }
       }
       
-      return logic::exists(a.params, 
+      return _exists(a.params, 
         apply(a) && big_and(*sigma, mappings) && big_or(*sigma, pre)
       );
     });
 
-    return temporal::forall(p.params, implies(head, body));
+    return temporal_forall(p.params, implies(head, body));
   }
 
   static logic::formula parallelism(domain const& d) {
@@ -207,8 +232,8 @@ namespace purple {
         if(a1.name == a2.name)
           continue;
         axioms.push_back(
-          logic::exists(a1.params, !apply(a1)) || 
-          logic::exists(a2.params, !apply(a2))
+          _exists(a1.params, !apply(a1)) || 
+          _exists(a2.params, !apply(a2))
         );
       }
     }
@@ -228,8 +253,8 @@ namespace purple {
       logic::formula guard = big_or(*d.sigma, guards);
 
       axioms.push_back(
-        logic::forall(a.params, 
-          implies(apply(a), logic::forall(primes, 
+        logic_forall(a.params, 
+          implies(apply(a), logic_forall(primes, 
             implies(guard, !apply(a, primes))
           ))
         )
@@ -248,13 +273,13 @@ namespace purple {
 
     logic::formula preconditions = 
       logic::big_and(*sigma, d.actions, [&](action const& a) {
-        return logic::forall(a.params, implies(apply(a), a.precondition));
+        return logic_forall(a.params, implies(apply(a), a.precondition));
       });
 
     temporal::formula effects = 
       temporal::big_and(*sigma, d.actions, [&](action const& a) {
         return temporal::big_and(*sigma, a.effects, [&](effect const& e) {
-          return temporal::forall(
+          return temporal_forall(
             a.params, implies(apply(a) && e.precondition, X(encode(e)))
           );
         });
@@ -344,6 +369,13 @@ namespace purple {
 
   std::optional<plan::step> solver::get_step(size_t t) const {
     for(action const &a : _d->actions) {
+      if(a.params.empty()) {
+        logic::proposition p = _d->sigma->proposition(a.name);
+        if(_slv.model()->value(p, t))
+          return plan::step{a, {}};
+        continue;
+      }
+
       std::vector<logic::domain_ref> domains;
       for(logic::var_decl decl : a.params) {
         auto dom = domain_of_type(_p, decl.sort());
@@ -356,7 +388,7 @@ namespace purple {
         for(size_t i = 0; i < domains.size(); i++) {
           args.push_back(domains[i]->elements()[indexes[i]]);
         }
-
+        
         logic::relation rel = _d->sigma->relation(a.name);
         if(_slv.model()->value(rel(args), t)) {
           return plan::step{a, args};

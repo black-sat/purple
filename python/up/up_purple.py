@@ -73,6 +73,10 @@ class FormulasConverter(up.model.walkers.DagWalker):
             return self._sigma.proposition(param.name)
         return self._sigma.variable(param.name)
 
+    def walk_object_exp(self, expression, args):
+        assert len(args) == 0
+        return self._sigma.variable(expression.object().name)
+
     def walk_bool_constant(self, expression, args):
         assert len(args) == 0
         if expression.is_true():
@@ -170,17 +174,17 @@ class PurpleEngineImpl(
         raise NotImplemented
 
     def _convert_type_decl(self, problem, type_):
-        if not type.is_user_type():
+        if not type_.is_user_type():
             raise NotImplemented
         
         sort = self._convert_type(type_)
         elements = []
-        for o in problem.objects:
+        for o in problem.objects(type_):
             e = self._sigma.variable(o.name)
             elements.append(e)
-            self._objects[e] = o
+            self._objects[o.name] = o
 
-        return _sigma.sort_decl(sort, black.domain(self._sigma, elements))
+        return self._sigma.sort_decl(sort, black.domain(elements))
 
 
     def _convert_param(self, param):
@@ -197,7 +201,7 @@ class PurpleEngineImpl(
         assert fluent.arity > 0
         name = fluent.name
         params = [self._convert_param(p) for p in fluent.signature]
-        return purple.predicate(name, params)
+        return purple.predicate(self._sigma.relation(name), params)
 
     def _convert_effect(self, effect):
         condition = self._convert_expr(effect.condition)
@@ -208,7 +212,7 @@ class PurpleEngineImpl(
         if len(effect.fluent.args) == 0:
             fluents = [self._convert_expr(effect.fluent)]
         else:
-            predicates = [self._convert_expr(effect.fluents)]
+            predicates = [self._convert_expr(effect.fluent)]
         assert effect.value.is_bool_constant()
         pos = effect.value.bool_constant_value()
 
@@ -223,7 +227,7 @@ class PurpleEngineImpl(
         effects = [self._convert_effect(e) for e in action.effects]
 
         a = purple.action(name, params, precondition, effects)
-        self._actions[action] = a
+        self._actions[name] = action
         return a
 
     def _convert_init(self, problem):
@@ -232,7 +236,7 @@ class PurpleEngineImpl(
         for fluent, value in problem.initial_values.items():
             assert value.is_bool_constant()
             if value.bool_constant_value():
-                if fluent.arity == 0:
+                if len(fluent.args) == 0:
                     fluents.append(self._convert_expr(fluent))
                 else:
                     predicates.append(self._convert_expr(fluent))
@@ -251,7 +255,9 @@ class PurpleEngineImpl(
 
         domain = purple.domain(self._sigma, types, fluents, predicates, actions)
 
-        type_decls = [self._convert_type_decl(t) for t in problem.user_types]
+        type_decls = [
+            self._convert_type_decl(problem, t) for t in problem.user_types
+        ]
         init = self._convert_init(problem)
         goal = black.big_and(
             self._sigma, [self._convert_expr(e) for e in problem.goals]
@@ -262,12 +268,13 @@ class PurpleEngineImpl(
         return (domain, instance)
 
     def _convert_back_variable(self, var):
-        return self._expr_manager.ObjectExp(self._objects[var])
+        return self._expr_manager.ObjectExp(self._objects[str(var.name)])
 
     def _convert_plan(self, plan):
         actions = []
         for step in plan.steps:
-            action = self._actions[step.action]
+            action = self._actions[str(step.action.name)]
+            assert action is not None
             params = tuple([self._convert_back_variable(v) for v in step.args])
             actions.append(up.plans.ActionInstance(action, params))
         
