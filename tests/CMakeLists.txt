@@ -23,7 +23,7 @@
 
 set (
   SRC
-  scratch.cpp
+  kitchen.cpp
 )
 
 add_executable (test ${SRC})

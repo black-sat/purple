@@ -43,15 +43,26 @@ if(PURPLE_ENABLE_PYTHON_BINDINGS)
 
     message(STATUS "Python and PyBind11 found! Enabling Python bindings...")
 
-    pybind11_add_module(pypurple src/bindings.cpp)
+    pybind11_add_module(pypurple EXCLUDE_FROM_ALL src/bindings.cpp)
 
-    target_include_directories(
-      pypurple PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include
-    )
     target_link_libraries(pypurple PUBLIC purple)
     set_target_properties(pypurple PROPERTIES OUTPUT_NAME pypurple)
 
-    install(TARGETS pypurple DESTINATION "${Python3_SITELIB}")
+    # install(TARGETS pypurple DESTINATION "${Python3_SITELIB}")
+
+    get_target_property(
+      PURPLE_INCLUDE_DIRS 
+      purple
+      INCLUDE_DIRECTORIES
+    )
+    
+    get_target_property(
+      BLACK_INCLUDE_DIRS 
+      black::black 
+      INTERFACE_INCLUDE_DIRECTORIES
+    )
+
+    configure_file(setup.py.in setup.py)
   
   endif()
     
