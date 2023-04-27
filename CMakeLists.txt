@@ -25,7 +25,7 @@ cmake_minimum_required(VERSION 3.10)
 
 project(
   purple 
-  VERSION 0.1.4
+  VERSION 0.1.5
   LANGUAGES C CXX
   DESCRIPTION "PURPLE (Expressive Automated Planner based on BLACK)"
 )

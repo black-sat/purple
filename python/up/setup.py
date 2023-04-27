@@ -3,7 +3,7 @@
 from setuptools import setup
 
 setup(name='up_purple',
-  version='0.1.3',
+  version='0.1.5',
   description='PURPLE Integration with the UP',
   author='Nicola Gigante',
   author_email='nicola.gigante@unibz.it',

@@ -298,7 +298,8 @@ namespace purple {
     temporal::formula transition = 
       preconditions && effects && frames && semantics;
 
-    return init && G(transition) && p.trajectory && F(p.goal);
+    return 
+      init && G(transition) && p.trajectory && F(p.goal & wX(sigma->bottom()));
   }
 
   [[maybe_unused]]

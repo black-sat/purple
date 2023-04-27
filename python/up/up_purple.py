@@ -133,6 +133,7 @@ class PurpleEngineImpl(
         supported_kind = up.model.ProblemKind()
         supported_kind.set_problem_class('ACTION_BASED') 
         supported_kind.set_typing('FLAT_TYPING') # ???
+        supported_kind.set_effects_kind('CONDITIONAL_EFFECTS')
         supported_kind.set_conditions_kind('NEGATIVE_CONDITIONS')
         supported_kind.set_conditions_kind('DISJUNCTIVE_CONDITIONS')
         supported_kind.set_constraints_kind('TRAJECTORY_CONSTRAINTS')
