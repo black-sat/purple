@@ -135,6 +135,7 @@ namespace purple {
     std::vector<black::sort_decl> types;
     state init;
     logic::formula goal;
+    temporal::formula trajectory;
   };
 
   struct plan {

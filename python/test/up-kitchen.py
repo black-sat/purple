@@ -43,9 +43,20 @@ problem.set_initial_value(connected(bedroom, balcony), True)
 
 problem.add_goal(position(kitchen))
 
-with OneshotPlanner(name='PURPLE') as planner:
-    result = planner.solve(problem)
-    if result.status in unified_planning.engines.results.POSITIVE_OUTCOMES:
-        print(f"PURPLE found this plan: {result.plan}")
-    else:
-        print("No plan found.")
+problem.add_trajectory_constraint(Sometime(position(toilet)))
+
+with Compiler(
+        problem_kind = problem.kind, 
+        compilation_kind = CompilationKind.GROUNDING
+    ) as grounder:
+
+    print("Grounding...")
+    grounded = grounder.compile(problem, CompilationKind.GROUNDING)
+    print("Solving...")
+    with OneshotPlanner(name='PURPLE') as planner:
+        result = planner.solve(grounded.problem)
+        if result.status in unified_planning.engines.results.POSITIVE_OUTCOMES:
+            mapped = result.plan.replace_action_instances(grounded.map_back_action_instance)
+            print(f"PURPLE found this plan: {mapped}")
+        else:
+            print("No plan found.")

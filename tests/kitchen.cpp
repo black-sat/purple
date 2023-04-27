@@ -86,7 +86,9 @@ int main() {
         connected(bedroom, balcony)
       }
     },
-    position(kitchen)
+    position(kitchen),
+    F(position(toilet))
+    //sigma.top()
   };
 
   purple::solver slv;

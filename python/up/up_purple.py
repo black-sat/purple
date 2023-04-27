@@ -93,6 +93,26 @@ class FormulasConverter(up.model.walkers.DagWalker):
         else:
             return self._sigma.bottom()
 
+    def walk_sometime(self, expression, args):
+        assert len(args) == 1
+        return black.eventually(args[0])
+    
+    def walk_always(self, expression, args):
+        assert len(args) == 1
+        return black.always(args[0])
+
+    def walk_at_most_once(self, expression, args):
+        assert len(args) == 1
+        return black.always(black.implies(args[0], black.w_tomorrow(black.always(~args[0]))))
+    
+    def walk_sometime_before(self, expression, args):
+        assert len(args) == 2
+        return black.eventually(args[0] & black.tomorrow(black.eventually(args[1])))
+    
+    def walk_sometime_after(self, expression, args):
+        assert len(args) == 2
+        return black.eventually(args[1] & black.tomorrow(black.eventually(args[0])))
+
 class PurpleEngineImpl(
         up.engines.Engine,
         up.engines.mixins.OneshotPlannerMixin
@@ -115,6 +135,7 @@ class PurpleEngineImpl(
         supported_kind.set_typing('FLAT_TYPING') # ???
         supported_kind.set_conditions_kind('NEGATIVE_CONDITIONS')
         supported_kind.set_conditions_kind('DISJUNCTIVE_CONDITIONS')
+        supported_kind.set_constraints_kind('TRAJECTORY_CONSTRAINTS')
         return supported_kind
 
     @staticmethod
@@ -251,6 +272,13 @@ class PurpleEngineImpl(
                     predicates.append(self._convert_expr(fluent))
         return purple.state(fluents, predicates)
 
+    def _convert_trajectory(self, problem):
+        converted = [
+            self._convert_expr(e) for e in problem.trajectory_constraints
+        ]
+        return black.big_and(self._sigma, converted)
+
+
     def _convert_problem(self, problem):
         types = [self._convert_type(t) for t in problem.user_types]
         fluents = [
@@ -271,8 +299,10 @@ class PurpleEngineImpl(
         goal = black.big_and(
             self._sigma, [self._convert_expr(e) for e in problem.goals]
         )
+        trajectory = self._convert_trajectory(problem)
 
-        instance = purple.problem(self._sigma, type_decls, init, goal)
+        instance = \
+            purple.problem(self._sigma, type_decls, init, goal, trajectory)
 
         return (domain, instance)
 

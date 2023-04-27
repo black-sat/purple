@@ -46,7 +46,7 @@ if(PURPLE_ENABLE_PYTHON_BINDINGS)
     pybind11_add_module(pypurple EXCLUDE_FROM_ALL src/bindings.cpp)
 
     target_link_libraries(pypurple PUBLIC purple)
-    set_target_properties(pypurple PROPERTIES OUTPUT_NAME pypurple)
+    set_target_properties(pypurple PROPERTIES OUTPUT_NAME purple_plan)
 
     # install(TARGETS pypurple DESTINATION "${Python3_SITELIB}")
 

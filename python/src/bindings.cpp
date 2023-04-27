@@ -228,14 +228,16 @@ PYBIND11_MODULE(purple_plan, m) {
     black::alphabet *sigma,
     std::vector<black::sort_decl> types,
     purple::state init,
-    temporal::formula goal
+    temporal::formula goal,
+    temporal::formula trajectory
   ){
-    return purple::problem{sigma, types, init, to_fo(goal)};
+    return purple::problem{sigma, types, init, to_fo(goal), trajectory};
   }));
   
   problem.def_readwrite("types", &purple::problem::types);
   problem.def_readwrite("init", &purple::problem::init);
   problem.def_readwrite("goal", &purple::problem::goal);
+  problem.def_readwrite("trajectory", &purple::problem::trajectory);
 
   py::class_<purple::plan::step> step(m, "step");
   step.def(py::init([](
