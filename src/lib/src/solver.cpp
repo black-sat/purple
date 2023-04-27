@@ -299,7 +299,7 @@ namespace purple {
       preconditions && effects && frames && semantics;
 
     return 
-      init && G(transition) && p.trajectory && F(p.goal & wX(sigma->bottom()));
+      init && G(transition) && p.trajectory && F(p.goal && wX(sigma->bottom()));
   }
 
   [[maybe_unused]]
