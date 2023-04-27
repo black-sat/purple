@@ -101,7 +101,7 @@ namespace pypurple {
 
 }
 
-PYBIND11_MODULE(pypurple, m) {
+PYBIND11_MODULE(purple_plan, m) {
 
   using namespace pypurple;
 

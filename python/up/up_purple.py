@@ -24,8 +24,9 @@
 import typing
 import warnings
 import unified_planning as up
+import unified_planning.engines
 
-import pypurple as purple
+import purple_plan as purple
 import black_sat as black
 
 

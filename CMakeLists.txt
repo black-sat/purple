@@ -25,12 +25,12 @@ cmake_minimum_required(VERSION 3.10)
 
 project(
   purple 
-  VERSION 0.1.0
+  VERSION 0.1.4
   LANGUAGES C CXX
   DESCRIPTION "PURPLE (Expressive Automated Planner based on BLACK)"
 )
 
-set(BUILD_SHARED_LIBS ON)
+option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 
 set(CMAKE_MODULE_PATH
     "${CMAKE_SOURCE_DIR}/cmake"
@@ -41,7 +41,7 @@ include(GNUInstallDirs) # Correct and portable installation paths
 include(CheckIPOSupported) # Check if we can do LTO
 
 # dependencies
-find_package(black 0.9.2 REQUIRED)
+find_package(black 0.10.3 REQUIRED)
 
 #
 # Fix the RPATH for the installation 

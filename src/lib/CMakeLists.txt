@@ -28,6 +28,8 @@ set (
 
 add_library (purple ${LIB_SRC})
 
+set_property(TARGET purple PROPERTY POSITION_INDEPENDENT_CODE ON)
+
 target_link_libraries(purple PUBLIC black::black)
 
 target_include_directories(purple PUBLIC  
