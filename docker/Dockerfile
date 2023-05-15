@@ -8,10 +8,10 @@ RUN apt-get update && apt-get install -y software-properties-common && \
     add-apt-repository ppa:deadsnakes/ppa
 RUN apt-get update && apt-get install -y pybind11-dev \
     python3-pip python-is-python3 \
-    python3.9-dev python3.9-distutils 
+    python3.10-dev python3.10-distutils 
 
-ENV Python3_EXECUTABLE=/usr/bin/python3.9
-ENV PYTHON_EXECUTABLE=/usr/bin/python3.9
+ENV Python3_EXECUTABLE=/usr/bin/python3.10
+ENV PYTHON_EXECUTABLE=/usr/bin/python3.10
 
 WORKDIR /downloads
 RUN wget https://github.com/black-sat/black/releases/download/v$BLACK_VERSION/black-sat-$BLACK_VERSION.ubuntu20.04.x86_64.deb
